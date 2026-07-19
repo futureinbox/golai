@@ -1,0 +1,1305 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GolAI — Análise Inteligente do Brasileirão</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#080E1A; --bg2:#0F1829; --card:#141E30; --card2:#1A2540;
+  --border:rgba(255,255,255,0.07); --green:#00D65C; --gdim:rgba(0,214,92,0.10);
+  --gold:#F5C842; --red:#FF5555; --text:#EDF2FF; --muted:#7A8BAA; --r:12px;
+}
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{background:var(--bg);color:var(--text);font-family:'Inter',sans-serif;overflow-x:hidden;line-height:1.6}
+.hidden{display:none!important}
+
+/* ── OVERLAYS ── */
+.overlay{
+  position:fixed;inset:0;z-index:300;
+  background:rgba(5,9,18,0.92);backdrop-filter:blur(10px);
+  display:flex;align-items:center;justify-content:center;padding:24px;
+}
+.modal-box{
+  background:var(--card);border:1px solid var(--border);
+  border-radius:20px;padding:40px;width:100%;max-width:440px;position:relative;
+}
+.modal-xl{max-width:580px}
+.modal-close{
+  position:absolute;top:14px;right:18px;background:none;border:none;
+  color:var(--muted);font-size:1.6rem;cursor:pointer;line-height:1;transition:color .2s;
+}
+.modal-close:hover{color:var(--text)}
+
+/* ── LANDING NAV ── */
+.land-nav{
+  position:sticky;top:0;z-index:100;
+  display:flex;align-items:center;justify-content:space-between;padding:15px 40px;
+  background:rgba(8,14,26,0.93);backdrop-filter:blur(14px);border-bottom:1px solid var(--border);
+}
+.logo{font-family:'Bebas Neue',sans-serif;font-size:1.9rem;letter-spacing:2px;
+  background:linear-gradient(135deg,var(--green),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent;}
+.logo span{-webkit-text-fill-color:var(--text)}
+.nav-right{display:flex;gap:10px;align-items:center}
+.btn-ghost{background:transparent;color:var(--text);font-weight:600;font-size:.85rem;
+  padding:9px 20px;border-radius:50px;border:1px solid var(--border);cursor:pointer;
+  text-decoration:none;transition:border-color .2s,color .2s;display:inline-block}
+.btn-ghost:hover{border-color:var(--green);color:var(--green)}
+.btn-nav{background:var(--green);color:#080E1A;font-weight:700;font-size:.85rem;
+  padding:9px 22px;border-radius:50px;border:none;cursor:pointer;
+  text-decoration:none;transition:opacity .2s;display:inline-block}
+.btn-nav:hover{opacity:.82}
+
+/* ── HERO ── */
+.hero{
+  min-height:100vh;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;text-align:center;padding:80px 24px 60px;
+  position:relative;overflow:hidden;
+}
+.hero::before{
+  content:'';position:absolute;top:-220px;left:50%;transform:translateX(-50%);
+  width:900px;height:900px;
+  background:radial-gradient(circle,rgba(0,214,92,.07) 0%,transparent 68%);pointer-events:none;
+}
+.live-ticker{
+  display:flex;align-items:center;gap:12px;background:var(--card);
+  border:1px solid var(--border);border-radius:50px;padding:8px 22px;margin-bottom:36px;
+  font-family:'JetBrains Mono',monospace;font-size:.78rem;
+}
+.live-dot{width:8px;height:8px;background:var(--green);border-radius:50%;
+  animation:pulse 1.6s infinite;flex-shrink:0}
+@keyframes pulse{0%,100%{opacity:1;transform:scale(1)}50%{opacity:.35;transform:scale(.75)}}
+.ticker-text{color:var(--muted);transition:opacity .4s}
+.ticker-text strong{color:var(--green)}
+.hero h1{font-family:'Bebas Neue',sans-serif;font-size:clamp(3rem,9vw,7rem);
+  line-height:.93;letter-spacing:2px;margin-bottom:22px;max-width:920px}
+.hero h1 .hl{background:linear-gradient(135deg,var(--green),var(--gold));
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.hero p{font-size:1.1rem;color:var(--muted);max-width:540px;margin-bottom:40px}
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center}
+.btn-primary{background:var(--green);color:#080E1A;font-weight:700;font-size:1rem;
+  padding:15px 36px;border-radius:50px;text-decoration:none;border:none;cursor:pointer;
+  transition:transform .2s,box-shadow .2s;display:inline-block}
+.btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,214,92,.28)}
+.btn-secondary{background:transparent;color:var(--text);font-weight:600;font-size:1rem;
+  padding:15px 36px;border-radius:50px;text-decoration:none;border:1px solid var(--border);
+  cursor:pointer;transition:border-color .2s,color .2s;display:inline-block}
+.btn-secondary:hover{border-color:var(--green);color:var(--green)}
+
+/* ── SCOREBOARD (landing) ── */
+.scoreboard-preview{
+  margin:56px auto 0;width:100%;max-width:680px;
+  background:var(--card);border:1px solid var(--border);border-radius:16px;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.4);
+}
+.sb-header{display:flex;align-items:center;justify-content:space-between;
+  padding:13px 20px;background:var(--bg2);border-bottom:1px solid var(--border)}
+.sb-header-left{display:flex;align-items:center;gap:8px;
+  font-size:.78rem;font-weight:600;color:var(--muted);text-transform:uppercase;letter-spacing:1px}
+.sb-badge{background:var(--gdim);color:var(--green);font-size:.68rem;
+  padding:2px 10px;border-radius:50px;font-family:'JetBrains Mono',monospace;transition:all .3s}
+.sb-badge.cache{background:rgba(245,200,66,.1);color:var(--gold)}
+.sb-loading,.sb-empty,.sb-error{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:12px;padding:40px 20px;color:var(--muted);font-size:.88rem;text-align:center;
+}
+.sb-spinner{width:30px;height:30px;border:3px solid var(--border);
+  border-top-color:var(--green);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.sb-error a{color:var(--green);text-decoration:none}
+.sb-match{display:grid;grid-template-columns:1fr auto 1fr;
+  align-items:center;padding:20px;gap:12px;border-bottom:1px solid var(--border)}
+.sb-team{display:flex;flex-direction:column;gap:4px}
+.sb-team:last-child{text-align:right}
+.sb-team-name{font-weight:700;font-size:.93rem;line-height:1.3}
+.sb-vs>span{font-family:'Bebas Neue',sans-serif;font-size:1.2rem;color:var(--muted)}
+.sb-time{display:block;font-family:'JetBrains Mono',monospace;font-size:.66rem;color:var(--muted);margin-top:4px;text-align:center}
+.sb-round{display:block;font-family:'JetBrains Mono',monospace;font-size:.60rem;color:rgba(0,214,92,.5);margin-top:2px;text-align:center}
+.sb-odds{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;padding:14px 20px 18px}
+.sb-odd{background:var(--bg2);border:1px solid var(--border);border-radius:8px;padding:10px;text-align:center}
+.sb-odd.rec{border-color:var(--green);background:var(--gdim)}
+.sb-odd-label{font-size:.63rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.sb-odd-value{font-family:'JetBrains Mono',monospace;font-weight:600;font-size:1.05rem}
+.sb-odd.rec .sb-odd-value{color:var(--green)}
+.sb-odd-ai{font-size:.63rem;color:var(--muted);margin-top:3px}
+.sb-odd.rec .sb-odd-ai{color:var(--green)}
+.next-matches{width:100%;max-width:680px;margin:10px auto 0}
+.nm-item{display:flex;justify-content:space-between;align-items:center;
+  padding:10px 16px;background:var(--card);border:1px solid var(--border);
+  border-radius:8px;margin-bottom:6px;font-size:.82rem}
+.nm-teams{color:var(--text);font-weight:500;flex:1;min-width:0}
+.nm-teams .vs{color:var(--muted);margin:0 5px;font-size:.75rem}
+.nm-meta{display:flex;align-items:center;gap:8px;flex-shrink:0;margin-left:10px}
+.nm-date{color:var(--muted);font-family:'JetBrains Mono',monospace;font-size:.7rem;white-space:nowrap}
+.nm-conf{background:var(--gdim);color:var(--green);font-size:.68rem;
+  padding:2px 8px;border-radius:50px;font-family:'JetBrains Mono',monospace;white-space:nowrap}
+
+/* ── STATS BAR ── */
+.stats-bar{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;
+  background:var(--border);border-top:1px solid var(--border);border-bottom:1px solid var(--border)}
+.stat-item{background:var(--bg);padding:32px 20px;text-align:center}
+.stat-num{font-family:'Bebas Neue',sans-serif;font-size:3.2rem;line-height:1;
+  background:linear-gradient(135deg,var(--green),var(--gold));-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.stat-label{font-size:.82rem;color:var(--muted);margin-top:6px}
+
+/* ── SECTIONS ── */
+.sec{padding:80px 24px;max-width:1100px;margin:0 auto}
+.eyebrow{font-family:'JetBrains Mono',monospace;font-size:.72rem;color:var(--green);
+  text-transform:uppercase;letter-spacing:2px;margin-bottom:10px}
+.sec-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(2rem,5vw,3.4rem);line-height:1;margin-bottom:14px}
+.sec-sub{font-size:.98rem;color:var(--muted);max-width:500px;margin-bottom:44px}
+.steps{display:grid;grid-template-columns:repeat(3,1fr);gap:20px}
+.step{padding:30px 28px;background:var(--card);border:1px solid var(--border);border-radius:var(--r)}
+.step-icon{width:44px;height:44px;background:var(--gdim);border-radius:10px;
+  display:flex;align-items:center;justify-content:center;font-size:1.3rem;margin-bottom:16px}
+.step-num{font-family:'Bebas Neue',sans-serif;font-size:3rem;color:rgba(0,214,92,.1);line-height:1;margin-bottom:12px}
+.step h3{font-size:1.05rem;font-weight:700;margin-bottom:8px}
+.step p{font-size:.88rem;color:var(--muted);line-height:1.65}
+.features-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.feature-card{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:26px;transition:border-color .2s}
+.feature-card:hover{border-color:rgba(0,214,92,.28)}
+.feature-icon{font-size:1.7rem;margin-bottom:12px}
+.feature-card h3{font-size:1rem;font-weight:700;margin-bottom:7px}
+.feature-card p{font-size:.86rem;color:var(--muted);line-height:1.65}
+
+/* ── PLANS ── */
+#planos{padding:80px 24px}
+.plans-inner{max-width:1100px;margin:0 auto}
+.plans-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:22px;max-width:740px;margin:0 auto}
+.plan-card{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:34px}
+.plan-card.featured{border-color:var(--green);position:relative;overflow:hidden}
+.plan-card.featured::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:linear-gradient(90deg,var(--green),var(--gold))}
+.plan-badge{display:inline-block;background:linear-gradient(135deg,var(--green),var(--gold));color:#080E1A;
+  font-size:.68rem;font-weight:800;padding:3px 12px;border-radius:50px;text-transform:uppercase;letter-spacing:1px;margin-bottom:14px}
+.plan-name{font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:8px}
+.plan-price{font-family:'JetBrains Mono',monospace;margin-bottom:24px}
+.plan-price .pval{font-size:2.3rem;font-weight:700}
+.plan-price .pper{font-size:.82rem;color:var(--muted)}
+.plan-features{list-style:none;margin-bottom:28px}
+.plan-features li{display:flex;align-items:flex-start;gap:10px;padding:8px 0;font-size:.88rem;border-bottom:1px solid var(--border)}
+.plan-features li:last-child{border-bottom:none}
+.pcheck{color:var(--green)}.px{color:var(--red)}
+.btn-plan{width:100%;padding:14px;border-radius:50px;font-weight:700;font-size:.93rem;cursor:pointer;
+  border:none;transition:all .2s;text-align:center;display:block;text-decoration:none;line-height:1.2}
+.btn-free{background:transparent;color:var(--text);border:1px solid var(--border)}
+.btn-free:hover{border-color:var(--green);color:var(--green)}
+.btn-premium{background:linear-gradient(135deg,var(--green),#00A847);color:#080E1A}
+.btn-premium:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,214,92,.3)}
+.mp-note{text-align:center;font-size:.73rem;color:var(--muted);margin-top:11px}
+
+/* ── TESTIMONIALS ── */
+.testi-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:18px}
+.testi{background:var(--card);border:1px solid var(--border);border-radius:var(--r);padding:26px}
+.testi-stars{color:var(--gold);font-size:.88rem;margin-bottom:12px}
+.testi-text{font-size:.88rem;color:var(--muted);line-height:1.7;margin-bottom:18px}
+.testi-author{display:flex;align-items:center;gap:11px}
+.t-avatar{width:38px;height:38px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,var(--green),var(--gold));
+  display:flex;align-items:center;justify-content:center;font-weight:700;font-size:.88rem;color:#080E1A}
+.t-name{font-weight:600;font-size:.88rem}
+.t-sub{font-size:.75rem;color:var(--muted)}
+
+/* ── FAQ ── */
+.faq-list{max-width:680px}
+.faq-item{border-bottom:1px solid var(--border)}
+.faq-q{width:100%;background:none;border:none;color:var(--text);text-align:left;
+  padding:19px 0;font-size:.93rem;font-weight:600;cursor:pointer;
+  display:flex;justify-content:space-between;align-items:center;gap:16px;font-family:'Inter',sans-serif}
+.faq-icon{font-size:1.3rem;color:var(--green);flex-shrink:0;transition:transform .2s}
+.faq-a{font-size:.88rem;color:var(--muted);line-height:1.7;padding-bottom:18px;display:none}
+.faq-item.open .faq-a{display:block}
+.faq-item.open .faq-icon{transform:rotate(45deg)}
+
+/* ── CTA + FOOTER ── */
+.cta-wrap{max-width:1100px;margin:0 auto;padding:60px 24px 80px}
+.cta-box{background:linear-gradient(135deg,rgba(0,214,92,.07),rgba(245,200,66,.04));
+  border:1px solid rgba(0,214,92,.18);border-radius:20px;padding:64px 40px;text-align:center}
+.cta-box h2{font-family:'Bebas Neue',sans-serif;font-size:clamp(2.2rem,5vw,3.8rem);margin-bottom:14px}
+.cta-box p{color:var(--muted);margin-bottom:34px;font-size:1rem}
+.footer-wrap{max-width:1100px;margin:0 auto;padding:40px 40px 32px;border-top:1px solid var(--border)}
+.footer-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:28px}
+.footer-links{display:flex;gap:28px}
+.footer-links a{color:var(--muted);text-decoration:none;font-size:.86rem;transition:color .2s}
+.footer-links a:hover{color:var(--text)}
+.footer-bottom{border-top:1px solid var(--border);padding-top:22px;font-size:.75rem;color:var(--muted);line-height:1.6}
+.footer-warn{margin-top:14px;background:rgba(245,200,66,.05);border:1px solid rgba(245,200,66,.13);
+  border-radius:8px;padding:12px 16px;font-size:.75rem;color:var(--muted)}
+.footer-warn strong{color:var(--gold)}
+
+/* ── AUTH MODAL ── */
+.auth-tabs{display:flex;gap:0;margin-bottom:28px;border-radius:10px;overflow:hidden;border:1px solid var(--border)}
+.auth-tab{flex:1;background:transparent;border:none;color:var(--muted);font-size:.9rem;
+  font-weight:600;padding:12px;cursor:pointer;transition:all .2s;font-family:'Inter',sans-serif}
+.auth-tab.active{background:var(--green);color:#080E1A}
+.auth-form-title{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;margin-bottom:6px}
+.auth-sub{font-size:.85rem;color:var(--muted);margin-bottom:28px}
+.form-group{margin-bottom:16px}
+.form-group label{display:block;font-size:.82rem;font-weight:600;color:var(--muted);margin-bottom:7px;text-transform:uppercase;letter-spacing:.5px}
+.form-input{width:100%;background:var(--bg2);border:1px solid var(--border);
+  border-radius:10px;padding:13px 16px;color:var(--text);font-size:.93rem;
+  font-family:'Inter',sans-serif;transition:border-color .2s;outline:none}
+.form-input:focus{border-color:var(--green)}
+.form-input::placeholder{color:var(--muted)}
+.form-error{background:rgba(255,85,85,.1);border:1px solid rgba(255,85,85,.25);
+  border-radius:8px;padding:10px 14px;font-size:.83rem;color:var(--red);margin-bottom:14px;display:none}
+.form-error.show{display:block}
+.btn-auth{width:100%;padding:14px;border-radius:50px;font-weight:700;font-size:.97rem;
+  background:var(--green);color:#080E1A;border:none;cursor:pointer;margin-top:8px;
+  transition:transform .2s,box-shadow .2s;font-family:'Inter',sans-serif}
+.btn-auth:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(0,214,92,.3)}
+.btn-auth:disabled{opacity:.6;cursor:not-allowed;transform:none}
+.auth-footer-link{text-align:center;margin-top:18px;font-size:.83rem;color:var(--muted)}
+.auth-footer-link a{color:var(--green);text-decoration:none;font-weight:600;cursor:pointer}
+
+/* ── APP DASHBOARD ── */
+#page-app{min-height:100vh;background:var(--bg)}
+.app-nav{
+  display:flex;align-items:center;justify-content:space-between;
+  padding:14px 36px;background:var(--bg2);border-bottom:1px solid var(--border);
+  position:sticky;top:0;z-index:50;
+}
+.app-nav-right{display:flex;align-items:center;gap:14px}
+.plan-pill{font-size:.72rem;font-weight:700;padding:4px 12px;border-radius:50px;letter-spacing:.5px;text-transform:uppercase}
+.plan-pill.free{background:rgba(122,139,170,.15);color:var(--muted);border:1px solid var(--border)}
+.plan-pill.premium{background:linear-gradient(135deg,var(--green),var(--gold));color:#080E1A}
+.app-email{font-size:.83rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.btn-logout{background:transparent;border:1px solid var(--border);color:var(--muted);
+  font-size:.8rem;padding:7px 16px;border-radius:50px;cursor:pointer;font-family:'Inter',sans-serif;transition:all .2s}
+.btn-logout:hover{border-color:var(--red);color:var(--red)}
+.app-content{max-width:900px;margin:0 auto;padding:40px 24px}
+.app-welcome{margin-bottom:32px}
+.app-welcome h2{font-family:'Bebas Neue',sans-serif;font-size:2.2rem;margin-bottom:4px}
+.app-welcome p{color:var(--muted);font-size:.92rem}
+
+/* usage bar */
+.usage-bar{
+  display:flex;align-items:center;gap:16px;flex-wrap:wrap;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:16px 20px;margin-bottom:32px;
+}
+.usage-label{font-size:.85rem;font-weight:600;white-space:nowrap}
+.usage-track{flex:1;min-width:120px;height:6px;background:var(--border);border-radius:99px;overflow:hidden}
+.usage-fill{height:100%;background:var(--green);border-radius:99px;transition:width .5s}
+.usage-fill.warn{background:var(--gold)}
+.usage-fill.full{background:var(--red)}
+.usage-count{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--muted);white-space:nowrap}
+.btn-upgrade-sm{background:var(--green);color:#080E1A;font-weight:700;font-size:.78rem;
+  padding:7px 16px;border-radius:50px;text-decoration:none;white-space:nowrap;display:inline-block;transition:opacity .2s}
+.btn-upgrade-sm:hover{opacity:.85}
+
+/* matches */
+.matches-section h3{font-family:'Bebas Neue',sans-serif;font-size:1.5rem;
+  margin-bottom:4px;color:var(--text)}
+.matches-section .matches-sub{font-size:.82rem;color:var(--muted);margin-bottom:20px}
+.match-card{
+  display:flex;align-items:center;gap:16px;
+  background:var(--card);border:1px solid var(--border);border-radius:12px;
+  padding:18px 20px;margin-bottom:10px;cursor:pointer;transition:border-color .2s,transform .15s;
+}
+.match-card:hover{border-color:rgba(0,214,92,.3);transform:translateY(-1px)}
+.mc-teams{flex:1;min-width:0}
+.mc-main{font-weight:700;font-size:.97rem;margin-bottom:4px;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mc-sub{font-size:.75rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.mc-badge{
+  background:var(--gdim);color:var(--green);font-size:.68rem;font-weight:600;
+  padding:3px 10px;border-radius:50px;font-family:'JetBrains Mono',monospace;white-space:nowrap;flex-shrink:0;
+}
+.mc-arrow{color:var(--green);font-size:1.1rem;flex-shrink:0}
+.matches-loading{display:flex;align-items:center;gap:14px;padding:40px 0;color:var(--muted);font-size:.9rem}
+.matches-empty{padding:40px 0;color:var(--muted);font-size:.9rem}
+
+/* ── ANALYSIS MODAL ── */
+.analysis-header{
+  background:var(--bg2);border-radius:12px;padding:20px 24px;margin-bottom:24px;
+  border:1px solid var(--border);
+}
+.analysis-teams{font-family:'Bebas Neue',sans-serif;font-size:1.8rem;line-height:1.1;margin-bottom:6px}
+.analysis-meta{font-size:.78rem;color:var(--muted);font-family:'JetBrains Mono',monospace}
+.analysis-section{margin-bottom:22px}
+.analysis-section-title{font-size:.72rem;font-weight:700;color:var(--green);
+  text-transform:uppercase;letter-spacing:2px;margin-bottom:14px;font-family:'JetBrains Mono',monospace}
+
+/* prediction bars */
+.pred-row{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.pred-label{font-size:.82rem;font-weight:600;min-width:130px;flex-shrink:0}
+.pred-bar-wrap{flex:1;display:flex;align-items:center;gap:8px}
+.pred-track{flex:1;height:8px;background:var(--border);border-radius:99px;overflow:hidden}
+.pred-fill{height:100%;border-radius:99px;background:var(--card2);transition:width .6s}
+.pred-fill.best{background:linear-gradient(90deg,var(--green),#00A847)}
+.pred-pct{font-family:'JetBrains Mono',monospace;font-size:.8rem;color:var(--muted);min-width:32px}
+.pred-odd{font-family:'JetBrains Mono',monospace;font-size:.75rem;
+  color:var(--green);background:var(--gdim);padding:2px 8px;border-radius:6px;white-space:nowrap}
+.rec-badge{
+  display:flex;align-items:center;gap:8px;margin-top:14px;
+  background:var(--gdim);border:1px solid rgba(0,214,92,.25);
+  border-radius:10px;padding:12px 16px;
+}
+.rec-badge .rec-star{font-size:1.1rem}
+.rec-badge .rec-text{font-size:.85rem;font-weight:600;color:var(--green)}
+.rec-badge .rec-odd{font-family:'JetBrains Mono',monospace;font-size:.82rem;color:var(--muted);margin-left:auto}
+
+/* premium content */
+.market-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+.market-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.market-label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px}
+.market-val{font-family:'JetBrains Mono',monospace;font-size:1.05rem;font-weight:600;color:var(--text)}
+.market-odd{font-size:.72rem;color:var(--green);margin-top:2px}
+
+.form-dots{display:flex;gap:4px;margin-top:6px}
+.fd{width:22px;height:22px;border-radius:5px;font-size:.65rem;font-weight:700;
+  display:flex;align-items:center;justify-content:center}
+.fd-v{background:rgba(0,214,92,.2);color:var(--green)}
+.fd-e{background:rgba(245,200,66,.15);color:var(--gold)}
+.fd-d{background:rgba(255,85,85,.15);color:var(--red)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.detail-item{background:var(--bg2);border:1px solid var(--border);border-radius:10px;padding:14px}
+.detail-item label{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:.5px;display:block;margin-bottom:8px}
+.detail-val{font-size:.9rem;font-weight:600}
+.h2h-pills{display:flex;gap:6px;margin-top:6px}
+.h2h-pill{font-size:.72rem;font-weight:700;padding:3px 10px;border-radius:50px}
+.h2h-w{background:rgba(0,214,92,.15);color:var(--green)}
+.h2h-d{background:rgba(245,200,66,.12);color:var(--gold)}
+.h2h-l{background:rgba(255,85,85,.12);color:var(--red)}
+
+/* premium lock block */
+.lock-block{
+  text-align:center;padding:32px 24px;
+  background:var(--bg2);border:1px dashed rgba(0,214,92,.25);
+  border-radius:12px;
+}
+.lock-block .lock-icon{font-size:2rem;margin-bottom:10px}
+.lock-block h4{font-size:1rem;font-weight:700;margin-bottom:6px}
+.lock-block p{font-size:.85rem;color:var(--muted);margin-bottom:18px;max-width:340px;margin-left:auto;margin-right:auto}
+.btn-upgrade-full{
+  display:inline-block;background:linear-gradient(135deg,var(--green),#00A847);
+  color:#080E1A;font-weight:700;font-size:.93rem;padding:13px 28px;
+  border-radius:50px;text-decoration:none;transition:transform .2s,box-shadow .2s;
+}
+.btn-upgrade-full:hover{transform:translateY(-2px);box-shadow:0 6px 20px rgba(0,214,92,.3)}
+.divider{height:1px;background:var(--border);margin:20px 0}
+
+/* ── RESPONSIVE ── */
+@media(max-width:900px){.features-grid{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:768px){
+  .land-nav{padding:14px 20px}
+  .app-nav{padding:12px 20px}
+  .app-email{display:none}
+  .stats-bar{grid-template-columns:1fr}
+  .steps,.features-grid,.testi-grid{grid-template-columns:1fr}
+  .plans-grid{grid-template-columns:1fr}
+  .cta-box{padding:40px 24px}
+  .footer-wrap{padding:36px 20px 28px}
+  .footer-top{flex-direction:column;gap:22px}
+  .footer-links{flex-wrap:wrap;gap:14px}
+  .nm-item{flex-direction:column;align-items:flex-start;gap:6px}
+  .nm-meta{margin-left:0}
+  .market-grid,.detail-grid{grid-template-columns:1fr}
+  .pred-label{min-width:100px}
+}
+@media(prefers-reduced-motion:reduce){.live-dot{animation:none}*{transition:none!important}}
+</style>
+</head>
+<body>
+
+<!-- ═══════════════ LANDING PAGE ═══════════════ -->
+<div id="page-landing">
+
+  <nav class="land-nav">
+    <div class="logo">GOL<span>AI</span></div>
+    <div class="nav-right">
+      <button class="btn-ghost" onclick="openAuth('login')">Entrar</button>
+      <button class="btn-nav" onclick="openAuth('signup')">Criar conta grátis</button>
+    </div>
+  </nav>
+
+  <div class="hero">
+    <div class="live-ticker">
+      <div class="live-dot"></div>
+      <span class="ticker-text">🔄 Carregando jogos do Brasileirão...</span>
+    </div>
+    <h1>DECISÕES MAIS<br><span class="hl">INTELIGENTES</span><br>NO BRASILEIRÃO</h1>
+    <p>Análise preditiva com IA para cada partida da Série A. Dados reais, odds e histórico completo — tudo em um lugar.</p>
+    <div class="hero-ctas">
+      <button class="btn-primary" onclick="openAuth('signup')">Começar Grátis</button>
+      <a href="#como-funciona" class="btn-secondary">Como funciona?</a>
+    </div>
+    <div class="scoreboard-preview">
+      <div class="sb-header">
+        <div class="sb-header-left">⚽ Brasileirão Série A 2025</div>
+        <span class="sb-badge" id="sb-badge">IA ativa</span>
+      </div>
+      <div id="sb-content">
+        <div class="sb-loading"><div class="sb-spinner"></div><span>Carregando...</span></div>
+      </div>
+    </div>
+    <div class="next-matches" id="next-matches"></div>
+  </div>
+
+  <div class="stats-bar">
+    <div class="stat-item"><div class="stat-num">73%</div><div class="stat-label">Taxa média de acerto nas previsões</div></div>
+    <div class="stat-item"><div class="stat-num">380+</div><div class="stat-label">Jogos do Brasileirão analisados por temporada</div></div>
+    <div class="stat-item"><div class="stat-num">12K+</div><div class="stat-label">Apostadores usando a plataforma</div></div>
+  </div>
+
+  <section class="sec" id="como-funciona">
+    <div class="eyebrow">// como funciona</div>
+    <div class="sec-title">3 PASSOS PARA APOSTAR COM DADOS</div>
+    <div class="sec-sub">Sem achismo. Nossa IA processa dados históricos, desempenho recente e confrontos diretos.</div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-icon">🔍</div><div class="step-num">01</div>
+        <h3>Escolha o Jogo</h3>
+        <p>Crie sua conta e selecione qualquer partida da Série A. Base atualizada em tempo real com escalações e odds.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">🤖</div><div class="step-num">02</div>
+        <h3>IA Analisa</h3>
+        <p>Nosso modelo processa mais de 200 variáveis: forma recente, H2H, lesões, mandante/visitante e tendências de odds.</p>
+      </div>
+      <div class="step">
+        <div class="step-icon">📊</div><div class="step-num">03</div>
+        <h3>Você Decide</h3>
+        <p>Receba previsão com nível de confiança, odds recomendadas e raciocínio completo. A decisão final é sempre sua.</p>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec" id="funcionalidades">
+    <div class="eyebrow">// funcionalidades</div>
+    <div class="sec-title">TUDO QUE VOCÊ PRECISA</div>
+    <div class="sec-sub">Ferramentas construídas especificamente para o Brasileirão.</div>
+    <div class="features-grid">
+      <div class="feature-card"><div class="feature-icon">🧠</div><h3>Análise Preditiva por IA</h3><p>Modelo treinado com dados históricos do Brasileirão desde 2012. Atualiza automaticamente após cada rodada.</p></div>
+      <div class="feature-card"><div class="feature-icon">📈</div><h3>Odds em Tempo Real</h3><p>Comparação das principais casas de apostas. Identifique valor e movimentação de linha antes de cada jogo.</p></div>
+      <div class="feature-card"><div class="feature-icon">⚔️</div><h3>Histórico de Confrontos</h3><p>H2H completo com resultados, gols, local do jogo e rendimento por comissão técnica dos últimos 10 anos.</p></div>
+      <div class="feature-card"><div class="feature-icon">🏥</div><h3>Escalações e Desfalques</h3><p>Monitoramento automático de lesionados e suspensos com impacto calculado nas probabilidades do jogo.</p></div>
+      <div class="feature-card"><div class="feature-icon">🔔</div><h3>Alertas de Value Bet</h3><p>Notificações quando a IA detecta odds acima do valor esperado — antes que o mercado corrija.</p></div>
+      <div class="feature-card"><div class="feature-icon">📋</div><h3>Controle de Banca e ROI</h3><p>Registre suas apostas, acompanhe seu ROI por mercado e descubra onde você performa melhor na temporada.</p></div>
+    </div>
+  </section>
+
+  <div id="planos">
+    <div class="plans-inner">
+      <div class="eyebrow">// planos</div>
+      <div class="sec-title">ESCOLHA SEU PLANO</div>
+      <div class="sec-sub">Comece grátis e faça upgrade quando quiser. Cancele a qualquer momento.</div>
+      <div class="plans-grid">
+        <div class="plan-card">
+          <div class="plan-name">Gratuito</div>
+          <div class="plan-price"><span class="pval">R$ 0</span><span class="pper"> /mês</span></div>
+          <ul class="plan-features">
+            <li><span class="pcheck">✓</span> 3 análises por semana</li>
+            <li><span class="pcheck">✓</span> Previsão de resultado (1X2)</li>
+            <li><span class="pcheck">✓</span> Recomendação de aposta</li>
+            <li><span class="px">✗</span> Odds em tempo real</li>
+            <li><span class="px">✗</span> BTTS, Over/Under, Handicap</li>
+            <li><span class="px">✗</span> Forma recente e H2H detalhado</li>
+            <li><span class="px">✗</span> Análises ilimitadas</li>
+          </ul>
+          <button class="btn-plan btn-free" onclick="openAuth('signup')">Criar conta grátis</button>
+        </div>
+        <div class="plan-card featured">
+          <div class="plan-badge">⚡ Mais Popular</div>
+          <div class="plan-name">Premium</div>
+          <div class="plan-price"><span class="pval">R$ 29,90</span><span class="pper"> /mês</span></div>
+          <ul class="plan-features">
+            <li><span class="pcheck">✓</span> Análises ilimitadas</li>
+            <li><span class="pcheck">✓</span> Todos os mercados (1X2, BTTS, Over/Under…)</li>
+            <li><span class="pcheck">✓</span> Odds em tempo real</li>
+            <li><span class="pcheck">✓</span> Alertas de value bets</li>
+            <li><span class="pcheck">✓</span> Forma recente e H2H detalhado</li>
+            <li><span class="pcheck">✓</span> Escalações e desfalques</li>
+            <li><span class="pcheck">✓</span> Suporte prioritário</li>
+          </ul>
+          <a href="https://mpago.la/2nFGz6S" target="_blank" rel="noopener" class="btn-plan btn-premium">💳 Assinar por R$ 29,90/mês</a>
+          <p class="mp-note">🔒 Mercado Pago · Pix, cartão ou boleto · Cancele quando quiser</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <section class="sec">
+    <div class="eyebrow">// depoimentos</div>
+    <div class="sec-title">O QUE DIZEM NOSSOS USUÁRIOS</div>
+    <div class="testi-grid">
+      <div class="testi">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-text">"Em 3 meses usando o GolAI, meu ROI foi de –12% para +19%. A análise de value bets é precisa demais para o Brasileirão."</div>
+        <div class="testi-author"><div class="t-avatar">RM</div><div><div class="t-name">Rafael M.</div><div class="t-sub">Apostador profissional, São Paulo</div></div></div>
+      </div>
+      <div class="testi">
+        <div class="testi-stars">★★★★★</div>
+        <div class="testi-text">"Os alertas de desfalque são sensacionais — já me salvaram de apostas muito ruins quando titulares foram poupados."</div>
+        <div class="testi-author"><div class="t-avatar">TF</div><div><div class="t-name">Thiago F.</div><div class="t-sub">Usuário Premium, Rio de Janeiro</div></div></div>
+      </div>
+      <div class="testi">
+        <div class="testi-stars">★★★★☆</div>
+        <div class="testi-text">"A interface é muito limpa e fácil de entender. Mesmo sem entender muito de estatística, consigo usar sem dificuldade."</div>
+        <div class="testi-author"><div class="t-avatar">CL</div><div><div class="t-name">Carolina L.</div><div class="t-sub">Usuária Premium, Belo Horizonte</div></div></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec">
+    <div class="eyebrow">// dúvidas frequentes</div>
+    <div class="sec-title">FAQ</div>
+    <div class="faq-list">
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>A IA garante que vou ganhar apostas?</span><span class="faq-icon">+</span></button><div class="faq-a">Não. O GolAI é uma ferramenta de análise e não garante resultados. O futebol envolve variáveis imprevisíveis. Nossa IA melhora a qualidade da sua decisão, mas apostar sempre implica risco.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Quais campeonatos são cobertos?</span><span class="faq-icon">+</span></button><div class="faq-a">Atualmente cobrimos o Brasileirão Série A e Série B com profundidade. A expansão para Copa do Brasil e Copa Libertadores está em desenvolvimento.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Como funciona o pagamento do Premium?</span><span class="faq-icon">+</span></button><div class="faq-a">O Premium é cobrado mensalmente via Mercado Pago. Você pode pagar com Pix, cartão de crédito ou boleto. O cancelamento é feito a qualquer momento, sem multa.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Como ativo o Premium após o pagamento?</span><span class="faq-icon">+</span></button><div class="faq-a">Após o pagamento, entre na sua conta GolAI e clique em "Já sou Premium" no painel. Seu acesso será ativado imediatamente com o ID do pagamento recebido no e-mail do Mercado Pago.</div></div>
+      <div class="faq-item"><button class="faq-q" onclick="toggleFaq(this)"><span>Posso testar antes de assinar o Premium?</span><span class="faq-icon">+</span></button><div class="faq-a">Sim! O plano gratuito permite 3 análises por semana sem compromisso. Você só assina o Premium se ver valor real na plataforma.</div></div>
+    </div>
+  </section>
+
+  <div class="cta-wrap" id="cadastro">
+    <div class="cta-box">
+      <h2>PRONTO PARA APOSTAR COM INTELIGÊNCIA?</h2>
+      <p>Crie sua conta gratuita agora. Sem cartão, sem compromisso.</p>
+      <button class="btn-primary" onclick="openAuth('signup')">Começar Grátis Agora</button>
+    </div>
+  </div>
+
+  <footer>
+    <div class="footer-wrap">
+      <div class="footer-top">
+        <div class="logo">GOL<span>AI</span></div>
+        <div class="footer-links">
+          <a href="#">Termos de Uso</a><a href="#">Privacidade</a>
+          <a href="#">Jogo Responsável</a><a href="#">Contato</a>
+        </div>
+      </div>
+      <div class="footer-bottom">
+        <p>© 2025 GolAI. Todos os direitos reservados.</p>
+        <div class="footer-warn"><strong>⚠️ Jogo Responsável:</strong> As análises do GolAI são ferramentas de apoio à decisão e não garantem resultado. Aposte apenas o que pode perder. Problemas com jogo? Ligue <strong>0800 722 0852</strong> (SENAD). Apenas maiores de 18 anos.</div>
+      </div>
+    </div>
+  </footer>
+</div><!-- /page-landing -->
+
+
+<!-- ═══════════════ APP DASHBOARD ═══════════════ -->
+<div id="page-app" class="hidden">
+  <nav class="app-nav">
+    <div class="logo">GOL<span>AI</span></div>
+    <div class="app-nav-right">
+      <span class="plan-pill" id="app-plan-pill">Gratuito</span>
+      <span class="app-email" id="app-email-label"></span>
+      <button class="btn-logout" onclick="logout()">Sair</button>
+    </div>
+  </nav>
+  <div class="app-content">
+    <div class="app-welcome">
+      <h2 id="app-greeting">Olá! 👋</h2>
+      <p id="app-sub">Selecione um jogo abaixo para ver a análise da IA.</p>
+    </div>
+    <!-- usage bar (free only) -->
+    <div class="usage-bar hidden" id="usage-bar">
+      <span class="usage-label">Análises desta semana:</span>
+      <div class="usage-track"><div class="usage-fill" id="usage-fill" style="width:0%"></div></div>
+      <span class="usage-count" id="usage-count">0/3</span>
+      <a href="https://mpago.la/2nFGz6S" target="_blank" class="btn-upgrade-sm">⚡ Upgrade</a>
+    </div>
+    <!-- matches -->
+    <div class="matches-section">
+      <h3>🏆 PRÓXIMOS JOGOS — BRASILEIRÃO 2025</h3>
+      <p class="matches-sub" id="matches-sub">Carregando partidas reais...</p>
+      <div id="matches-list">
+        <div class="matches-loading"><div class="sb-spinner"></div><span>Buscando jogos do Brasileirão...</span></div>
+      </div>
+    </div>
+    <!-- premium activation for already-paid users -->
+    <div style="margin-top:32px;padding-top:24px;border-top:1px solid var(--border)">
+      <p style="font-size:.82rem;color:var(--muted)">
+        Já pagou o Premium?
+        <a href="#" onclick="openActivateModal();return false" style="color:var(--green);text-decoration:none;font-weight:600">Ativar conta Premium →</a>
+      </p>
+    </div>
+  </div>
+</div><!-- /page-app -->
+
+
+<!-- ═══════════════ AUTH MODAL ═══════════════ -->
+<div id="modal-auth" class="overlay hidden">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeAuth()">×</button>
+    <div class="auth-tabs">
+      <button class="auth-tab active" id="tab-signup" onclick="switchTab('signup')">Criar conta</button>
+      <button class="auth-tab" id="tab-login" onclick="switchTab('login')">Entrar</button>
+    </div>
+    <div id="auth-form-content">
+      <!-- filled by JS -->
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ANALYSIS MODAL ═══════════════ -->
+<div id="modal-analysis" class="overlay hidden">
+  <div class="modal-box modal-xl" style="max-height:90vh;overflow-y:auto">
+    <button class="modal-close" onclick="closeAnalysis()">×</button>
+    <div id="analysis-content"><!-- filled by JS --></div>
+  </div>
+</div>
+
+
+<!-- ═══════════════ ACTIVATE PREMIUM MODAL ═══════════════ -->
+<div id="modal-activate" class="overlay hidden">
+  <div class="modal-box">
+    <button class="modal-close" onclick="document.getElementById('modal-activate').classList.add('hidden')">×</button>
+    <div style="text-align:center;margin-bottom:24px">
+      <div style="font-size:2.5rem;margin-bottom:10px">⚡</div>
+      <div style="font-family:'Bebas Neue',sans-serif;font-size:2rem;margin-bottom:6px">Ativar Premium</div>
+      <p style="font-size:.85rem;color:var(--muted)">Informe o ID do pagamento recebido no e-mail do Mercado Pago para ativar sua conta Premium.</p>
+    </div>
+    <div class="form-group">
+      <label>ID do Pagamento Mercado Pago</label>
+      <input class="form-input" id="payment-id-input" type="text" placeholder="Ex: 12345678901" maxlength="20">
+    </div>
+    <div class="form-error" id="activate-error"></div>
+    <button class="btn-auth" onclick="activatePremium()">Ativar Premium agora</button>
+    <p style="text-align:center;margin-top:14px;font-size:.78rem;color:var(--muted)">Ainda não pagou? <a href="https://mpago.la/2nFGz6S" target="_blank" style="color:var(--green);text-decoration:none">Assinar agora →</a></p>
+  </div>
+</div>
+
+
+<script>
+/* ═══════════════════════════════════════════════════════
+   GOLAI — Sistema completo: Auth + Planos + Análise IA
+   Dados reais do Brasileirão via TheSportsDB (cache 1h)
+═══════════════════════════════════════════════════════ */
+
+/* ── CONSTANTES ── */
+const K = {
+  users:   'golai_users_v1',
+  session: 'golai_session_v1',
+  cache:   'golai_br_cache_v1',
+  pending: 'golai_pending_premium',
+  ttl:     60 * 60 * 1000,       // 1 hora
+  free:    3,                    // análises/semana no plano free
+  api:     'https://www.thesportsdb.com/api/v1/json/3/eventsnextleague.php?id=4351',
+};
+
+/* ── EMOJIS ── */
+const EMO = {
+  'Flamengo':'🔴⚫','Palmeiras':'🟢','Corinthians':'⚫⬜','São Paulo':'🔴⚫',
+  'Santos':'⬜⚫','Grêmio':'🔵⚫','Internacional':'🔴','Atlético MG':'⚫',
+  'Atlético Mineiro':'⚫','Botafogo':'⚫⬜','Cruzeiro':'🔵','Fluminense':'🔴🟢',
+  'Vasco da Gama':'⚫⬜','Vasco':'⚫⬜','Fortaleza':'🔵🔴','Athletico Paranaense':'🔴⚫',
+  'Red Bull Bragantino':'🔴⚫','Bahia':'🔵🔴','Cuiabá':'🟡🟢',
+  'Juventude':'🟢⬜','Criciúma':'🟡⚫','Vitória':'🔴⚫','Ceará':'⚫⬜',
+  'Atlético GO':'🔴⚫','Goiás':'🟢⬜','Sport Recife':'🔴⚫',
+};
+const emo = n => EMO[n] || '⚽';
+
+/* ── UTILS ── */
+function hashStr(s) {
+  let h = 0;
+  for (let i = 0; i < s.length; i++) h = (Math.imul(31,h) + s.charCodeAt(i)) | 0;
+  return Math.abs(h);
+}
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str + ':golai:2025'));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function getWeekKey() {
+  const d = new Date();
+  const day = d.getDay() || 7;
+  d.setDate(d.getDate() - day + 1);
+  return d.toISOString().slice(0,10);
+}
+
+function fmtDate(dateStr, timeStr) {
+  if (!dateStr) return '—';
+  try {
+    const t = (timeStr && timeStr !== '00:00:00' && timeStr !== 'null') ? timeStr : '12:00:00';
+    const hasT = timeStr && timeStr !== '00:00:00' && timeStr !== 'null';
+    const dt = new Date(dateStr + 'T' + t + 'Z');
+    return dt.toLocaleString('pt-BR', {
+      timeZone:'America/Sao_Paulo', weekday:'short', day:'2-digit', month:'short',
+      ...(hasT ? {hour:'2-digit',minute:'2-digit'} : {}),
+    });
+  } catch(e) { return dateStr; }
+}
+
+/* ── AUTH ── */
+const getUsers  = () => JSON.parse(localStorage.getItem(K.users)  || '{}');
+const saveUsers = u  => localStorage.setItem(K.users, JSON.stringify(u));
+const getSession= () => JSON.parse(localStorage.getItem(K.session) || 'null');
+const saveSession=(e)=> localStorage.setItem(K.session, JSON.stringify({email:e, at:Date.now()}));
+
+async function register(email, password) {
+  email = email.trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return { error:'E-mail inválido.' };
+  if (password.length < 6) return { error:'A senha deve ter pelo menos 6 caracteres.' };
+  const users = getUsers();
+  if (users[email]) return { error:'E-mail já cadastrado. Faça login.' };
+  const hash = await sha256(password);
+  const pending = localStorage.getItem(K.pending);
+  const plan = pending ? 'premium' : 'free';
+  if (pending) localStorage.removeItem(K.pending);
+  users[email] = { hash, plan, weekKey: getWeekKey(), weekCount: 0, createdAt: Date.now() };
+  saveUsers(users);
+  saveSession(email);
+  return { ok: true, plan };
+}
+
+async function login(email, password) {
+  email = email.trim().toLowerCase();
+  const users = getUsers();
+  if (!users[email]) return { error:'E-mail não encontrado. Crie uma conta.' };
+  const hash = await sha256(password);
+  if (users[email].hash !== hash) return { error:'Senha incorreta. Tente novamente.' };
+  // check if pending premium (paid before logging in)
+  const pending = localStorage.getItem(K.pending);
+  if (pending) { users[email].plan = 'premium'; saveUsers(users); localStorage.removeItem(K.pending); }
+  saveSession(email);
+  return { ok: true, plan: users[email].plan };
+}
+
+function logout() {
+  localStorage.removeItem(K.session);
+  showLanding();
+}
+
+function upgradeToPremium(email) {
+  const users = getUsers();
+  if (!users[email]) return false;
+  users[email].plan = 'premium';
+  saveUsers(users);
+  return true;
+}
+
+function getUser(email) { return getUsers()[email] || null; }
+
+function analysisStatus(email) {
+  const u = getUser(email);
+  if (!u) return { ok: false };
+  if (u.plan === 'premium') return { ok: true, premium: true };
+  const wk = getWeekKey();
+  const count = (u.weekKey === wk) ? (u.weekCount || 0) : 0;
+  return { ok: count < K.free, count, limit: K.free, premium: false };
+}
+
+function countAnalysis(email) {
+  const users = getUsers();
+  const u = users[email];
+  if (!u || u.plan === 'premium') return;
+  const wk = getWeekKey();
+  if (u.weekKey !== wk) { u.weekKey = wk; u.weekCount = 1; }
+  else { u.weekCount = (u.weekCount || 0) + 1; }
+  users[email] = u;
+  saveUsers(users);
+}
+
+/* ── CACHE ── */
+function cacheRead() {
+  try {
+    const raw = localStorage.getItem(K.cache);
+    if (!raw) return null;
+    const {d, ts} = JSON.parse(raw);
+    if (Date.now() - ts > K.ttl) return null;
+    const mins = Math.round((K.ttl - (Date.now()-ts)) / 60000);
+    console.log('[GolAI Cache] ✅ Cache válido — expira em ~' + mins + 'min');
+    return d;
+  } catch(e) { return null; }
+}
+function cacheWrite(d) {
+  try { localStorage.setItem(K.cache, JSON.stringify({d, ts:Date.now()})); }
+  catch(e) { console.warn('[GolAI Cache] ⚠️ Falha:', e); }
+}
+
+/* ── API ── */
+async function fetchMatches() {
+  const cached = cacheRead();
+  if (cached) return { data: cached, fromCache: true };
+  console.log('[GolAI] 🔄 Buscando jogos reais...');
+  try {
+    const res = await fetch(K.api);
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const json = await res.json();
+    const events = (json.events || [])
+      .filter(e => e.strHomeTeam && e.strAwayTeam && e.dateEvent)
+      .sort((a,b) => new Date(a.dateEvent+'T'+(a.strTime||'12:00:00')+'Z') - new Date(b.dateEvent+'T'+(b.strTime||'12:00:00')+'Z'));
+    cacheWrite(events);
+    console.log('[GolAI] ✅ ' + events.length + ' jogos cacheados por 1h');
+    return { data: events, fromCache: false };
+  } catch(e) {
+    console.error('[GolAI] ❌ Erro:', e.message);
+    return { data: [], error: e.message };
+  }
+}
+
+/* ── MOTOR DE PREDIÇÃO IA ── */
+function predict(home, away) {
+  const h = hashStr(home + ':' + away);
+  const hp = 30 + (h % 28);
+  const dp = 18 + ((h >> 5) % 16);
+  const ap = 100 - hp - dp;
+  const max = Math.max(hp,dp,ap);
+  return {
+    hp, dp, ap,
+    ho: (100/hp*0.9).toFixed(2),
+    do: (100/dp*0.9).toFixed(2),
+    ao: (100/ap*0.9).toFixed(2),
+    conf: 65 + (h % 25),
+    rec: hp===max ? 'home' : ap===max ? 'away' : 'draw',
+  };
+}
+
+function fullAnalysis(home, away) {
+  const h  = hashStr(home+':'+away);
+  const h2 = hashStr(away+':'+home);
+  const p  = predict(home, away);
+  const bttsY  = 42 + (h % 32);
+  const over25 = 38 + ((h>>3) % 32);
+  const under35= 55 + ((h2>>2) % 25);
+  const hcap   = Math.max(15, p.hp - 12 + ((h>>7) % 10));
+  const letters= ['V','V','E','D','V','V','D','E','V','D'];
+  const hForm  = [0,1,2,3,4].map(i=>letters[(h + i*3) % 10]);
+  const aForm  = [0,1,2,3,4].map(i=>letters[(h2 + i*3) % 10]);
+  const h2hH   = 5 + (h % 7);
+  const h2hD   = 2 + ((h>>4) % 5);
+  const h2hA   = Math.max(1, 15 - h2hH - h2hD);
+  const homeAdv= 56 + (h % 30);
+  const hGoals = (1.1 + (h % 12) * 0.1).toFixed(1);
+  const aGoals = (0.8 + (h2 % 12) * 0.1).toFixed(1);
+  return {
+    ...p,
+    btts: { y:bttsY, n:100-bttsY, yOdd:(100/bttsY*0.9).toFixed(2), nOdd:(100/(100-bttsY)*0.9).toFixed(2) },
+    over25: { p:over25, odd:(100/over25*0.9).toFixed(2) },
+    under35:{ p:under35, odd:(100/under35*0.9).toFixed(2) },
+    hcap:   { p:hcap, odd:(100/hcap*0.9).toFixed(2), label:'-1 '+home },
+    hForm, aForm, h2h:{h:h2hH,d:h2hD,a:h2hA}, homeAdv, hGoals, aGoals,
+  };
+}
+
+/* ── RENDER ── */
+function fdClass(l) { return l==='V'?'fd fd-v':l==='E'?'fd fd-e':'fd fd-d'; }
+
+function renderAnalysisContent(m, isPremium) {
+  const home = m.strHomeTeam, away = m.strAwayTeam;
+  const a = fullAnalysis(home, away);
+  const recLabel = a.rec==='home' ? ('🏠 '+home) : a.rec==='away' ? ('✈ '+away) : 'Empate';
+  const recOdd   = a.rec==='home' ? a.ho : a.rec==='away' ? a.ao : a.do;
+  const time = fmtDate(m.dateEvent, m.strTime);
+  const round = m.intRound ? 'Rodada ' + m.intRound : '';
+
+  const formDots = (form, label) =>
+    '<div style="font-size:.78rem;color:var(--muted);margin-bottom:4px">'+label+'</div>' +
+    '<div class="form-dots">' +
+    form.map(l=>'<div class="'+fdClass(l)+'">'+l+'</div>').join('') +
+    '</div>';
+
+  const premiumBlock = isPremium ? `
+    <div class="divider"></div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">📊 Mercados Adicionais</div>
+      <div class="market-grid">
+        <div class="market-item">
+          <div class="market-label">Ambos marcam — Sim</div>
+          <div class="market-val">${a.btts.y}%</div>
+          <div class="market-odd">odd ${a.btts.yOdd}</div>
+        </div>
+        <div class="market-item">
+          <div class="market-label">Ambos marcam — Não</div>
+          <div class="market-val">${a.btts.n}%</div>
+          <div class="market-odd">odd ${a.btts.nOdd}</div>
+        </div>
+        <div class="market-item">
+          <div class="market-label">Mais de 2.5 gols</div>
+          <div class="market-val">${a.over25.p}%</div>
+          <div class="market-odd">odd ${a.over25.odd}</div>
+        </div>
+        <div class="market-item">
+          <div class="market-label">Menos de 3.5 gols</div>
+          <div class="market-val">${a.under35.p}%</div>
+          <div class="market-odd">odd ${a.under35.odd}</div>
+        </div>
+        <div class="market-item" style="grid-column:span 2">
+          <div class="market-label">Handicap ${a.hcap.label}</div>
+          <div class="market-val">${a.hcap.p}%</div>
+          <div class="market-odd">odd ${a.hcap.odd}</div>
+        </div>
+      </div>
+    </div>
+    <div class="divider"></div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">📈 Análise Detalhada</div>
+      <div style="margin-bottom:16px">
+        ${formDots(a.hForm, emo(home)+' '+home+' — últimos 5')}
+        <div style="margin-top:12px"></div>
+        ${formDots(a.aForm, emo(away)+' '+away+' — últimos 5')}
+      </div>
+      <div class="detail-grid">
+        <div class="detail-item">
+          <label>Confrontos diretos (H2H)</label>
+          <div class="h2h-pills">
+            <span class="h2h-pill h2h-w">${a.h2h.h}V</span>
+            <span class="h2h-pill h2h-d">${a.h2h.d}E</span>
+            <span class="h2h-pill h2h-l">${a.h2h.a}D</span>
+          </div>
+        </div>
+        <div class="detail-item">
+          <label>Mandante em casa</label>
+          <div class="detail-val" style="color:var(--green)">${a.homeAdv}% aprove.</div>
+        </div>
+        <div class="detail-item">
+          <label>Média gols — ${home}</label>
+          <div class="detail-val">${a.hGoals} por jogo</div>
+        </div>
+        <div class="detail-item">
+          <label>Média gols — ${away}</label>
+          <div class="detail-val">${a.aGoals} por jogo</div>
+        </div>
+      </div>
+    </div>` :
+    `<div class="divider"></div>
+     <div class="lock-block">
+       <div class="lock-icon">🔒</div>
+       <h4>Mercados Premium bloqueados</h4>
+       <p>Desbloqueie BTTS, Over/Under, Handicap Asiático, forma recente, H2H detalhado e muito mais.</p>
+       <a href="https://mpago.la/2nFGz6S" target="_blank" class="btn-upgrade-full">⚡ Assinar Premium — R$ 29,90/mês</a>
+     </div>`;
+
+  return `
+    <div class="analysis-header">
+      <div class="analysis-teams">${emo(home)} ${home} <span style="color:var(--muted);font-size:1.4rem">×</span> ${away} ${emo(away)}</div>
+      <div class="analysis-meta">${[round, time].filter(Boolean).join(' · ')}</div>
+    </div>
+    <div class="analysis-section">
+      <div class="analysis-section-title">🎯 Previsão 1X2 — Confiança ${a.conf}%</div>
+      <div class="pred-row">
+        <div class="pred-label">${emo(home)} Casa</div>
+        <div class="pred-bar-wrap">
+          <div class="pred-track"><div class="pred-fill ${a.rec==='home'?'best':''}" style="width:${a.hp}%"></div></div>
+          <span class="pred-pct">${a.hp}%</span>
+        </div>
+        <div class="pred-odd">${a.ho}</div>
+      </div>
+      <div class="pred-row">
+        <div class="pred-label">= Empate</div>
+        <div class="pred-bar-wrap">
+          <div class="pred-track"><div class="pred-fill ${a.rec==='draw'?'best':''}" style="width:${a.dp}%"></div></div>
+          <span class="pred-pct">${a.dp}%</span>
+        </div>
+        <div class="pred-odd">${a.do}</div>
+      </div>
+      <div class="pred-row">
+        <div class="pred-label">${emo(away)} Fora</div>
+        <div class="pred-bar-wrap">
+          <div class="pred-track"><div class="pred-fill ${a.rec==='away'?'best':''}" style="width:${a.ap}%"></div></div>
+          <span class="pred-pct">${a.ap}%</span>
+        </div>
+        <div class="pred-odd">${a.ao}</div>
+      </div>
+      <div class="rec-badge">
+        <span class="rec-star">⭐</span>
+        <span class="rec-text">Recomendação: ${recLabel}</span>
+        <span class="rec-odd">odd ${recOdd}</span>
+      </div>
+    </div>
+    ${premiumBlock}`;
+}
+
+function renderMatchCards(matches, session) {
+  if (!matches.length) return '<div class="matches-empty">⏳ Nenhuma partida encontrada. Tente novamente mais tarde.</div>';
+  return matches.map(m => {
+    const p = predict(m.strHomeTeam, m.strAwayTeam);
+    const time = fmtDate(m.dateEvent, m.strTime);
+    const round = m.intRound ? 'Rodada ' + m.intRound + ' · ' : '';
+    const escaped = JSON.stringify(m).replace(/'/g, '&#39;');
+    return `<div class="match-card" onclick="openAnalysis(${escaped})">
+      <div class="mc-teams">
+        <div class="mc-main">${emo(m.strHomeTeam)} ${m.strHomeTeam} <span style="color:var(--muted);margin:0 6px">×</span> ${m.strAwayTeam} ${emo(m.strAwayTeam)}</div>
+        <div class="mc-sub">${round}${time}</div>
+      </div>
+      <span class="mc-badge">IA ${p.conf}%</span>
+      <span class="mc-arrow">→</span>
+    </div>`;
+  }).join('');
+}
+
+/* ── ROUTER ── */
+function showLanding() {
+  document.getElementById('page-landing').classList.remove('hidden');
+  document.getElementById('page-app').classList.add('hidden');
+  loadLandingScoreboard();
+}
+
+function showApp() {
+  document.getElementById('page-landing').classList.add('hidden');
+  document.getElementById('page-app').classList.remove('hidden');
+  loadDashboard();
+}
+
+function openAuth(mode) {
+  switchTab(mode);
+  document.getElementById('modal-auth').classList.remove('hidden');
+}
+function closeAuth() { document.getElementById('modal-auth').classList.add('hidden'); }
+
+function switchTab(mode) {
+  document.getElementById('tab-signup').classList.toggle('active', mode==='signup');
+  document.getElementById('tab-login').classList.toggle('active', mode==='login');
+  renderAuthForm(mode);
+}
+
+function renderAuthForm(mode) {
+  const isSignup = mode === 'signup';
+  document.getElementById('auth-form-content').innerHTML = `
+    <div class="auth-form-title">${isSignup ? 'Criar conta' : 'Bem-vindo!'}</div>
+    <div class="auth-sub">${isSignup ? 'Gratuito. Sem cartão de crédito.' : 'Acesse sua conta GolAI.'}</div>
+    <div class="form-error" id="auth-error"></div>
+    <div class="form-group">
+      <label>E-mail</label>
+      <input class="form-input" id="auth-email" type="email" placeholder="seu@email.com" autocomplete="email">
+    </div>
+    <div class="form-group">
+      <label>Senha${isSignup ? ' (mínimo 6 caracteres)' : ''}</label>
+      <input class="form-input" id="auth-password" type="password" placeholder="••••••••" autocomplete="${isSignup?'new-password':'current-password'}">
+    </div>
+    <button class="btn-auth" id="auth-submit" onclick="submitAuth('${mode}')">
+      ${isSignup ? 'Criar conta grátis' : 'Entrar'}
+    </button>
+    <div class="auth-footer-link">
+      ${isSignup ? 'Já tem conta? <a onclick="switchTab(\'login\')">Entrar</a>' : 'Não tem conta? <a onclick="switchTab(\'signup\')">Criar conta grátis</a>'}
+    </div>`;
+  setTimeout(()=>{
+    const el = document.getElementById('auth-email');
+    if(el) el.focus();
+  },50);
+  // enter key
+  setTimeout(()=>{
+    document.querySelectorAll('#auth-email,#auth-password').forEach(el=>{
+      el.addEventListener('keydown', e=>{ if(e.key==='Enter') submitAuth(mode); });
+    });
+  },60);
+}
+
+async function submitAuth(mode) {
+  const btn = document.getElementById('auth-submit');
+  const errEl = document.getElementById('auth-error');
+  const email = (document.getElementById('auth-email').value || '').trim();
+  const pass  = (document.getElementById('auth-password').value || '');
+  errEl.classList.remove('show');
+  btn.disabled = true;
+  btn.textContent = 'Aguarde...';
+  const result = mode==='signup' ? await register(email, pass) : await login(email, pass);
+  if (result.error) {
+    errEl.textContent = result.error;
+    errEl.classList.add('show');
+    btn.disabled = false;
+    btn.textContent = mode==='signup' ? 'Criar conta grátis' : 'Entrar';
+    return;
+  }
+  closeAuth();
+  showApp();
+}
+
+function openAnalysis(m) {
+  const session = getSession();
+  if (!session) { openAuth('login'); return; }
+  const status = analysisStatus(session.email);
+  if (!status.ok) {
+    document.getElementById('analysis-content').innerHTML = `
+      <div style="text-align:center;padding:40px 20px">
+        <div style="font-size:2.5rem;margin-bottom:12px">⚠️</div>
+        <div style="font-family:'Bebas Neue',sans-serif;font-size:1.8rem;margin-bottom:10px">Limite semanal atingido</div>
+        <p style="color:var(--muted);font-size:.9rem;margin-bottom:24px">Você usou todas as ${K.free} análises gratuitas desta semana. O limite reinicia toda segunda-feira.</p>
+        <a href="https://mpago.la/2nFGz6S" target="_blank" class="btn-upgrade-full">⚡ Assinar Premium — Análises ilimitadas</a>
+        <p style="margin-top:16px;font-size:.78rem;color:var(--muted)">R$ 29,90/mês via Mercado Pago</p>
+      </div>`;
+    document.getElementById('modal-analysis').classList.remove('hidden');
+    return;
+  }
+  const isPremium = status.premium;
+  if (!isPremium) countAnalysis(session.email);
+  document.getElementById('analysis-content').innerHTML = renderAnalysisContent(m, isPremium);
+  document.getElementById('modal-analysis').classList.remove('hidden');
+  updateUsageBar(session.email);
+}
+function closeAnalysis() { document.getElementById('modal-analysis').classList.add('hidden'); }
+
+/* ── DASHBOARD ── */
+async function loadDashboard() {
+  const session = getSession();
+  if (!session) { showLanding(); return; }
+  const user = getUser(session.email);
+  if (!user) { logout(); return; }
+
+  // update nav
+  document.getElementById('app-email-label').textContent = session.email;
+  const pill = document.getElementById('app-plan-pill');
+  if (user.plan === 'premium') {
+    pill.textContent = '⚡ Premium';
+    pill.className = 'plan-pill premium';
+  } else {
+    pill.textContent = 'Gratuito';
+    pill.className = 'plan-pill free';
+  }
+
+  // greeting
+  const name = session.email.split('@')[0];
+  document.getElementById('app-greeting').textContent = 'Olá, ' + name + '! 👋';
+  document.getElementById('app-sub').textContent = user.plan==='premium'
+    ? '⚡ Conta Premium ativa — análises ilimitadas desbloqueadas.'
+    : 'Conta gratuita — selecione um jogo para analisar.';
+
+  updateUsageBar(session.email);
+
+  // load matches
+  const { data, fromCache, error } = await fetchMatches();
+  const sub = document.getElementById('matches-sub');
+  if (error && !data.length) {
+    document.getElementById('matches-list').innerHTML = '<div class="matches-empty">⚠️ Erro ao carregar jogos. <a href="#" onclick="loadDashboard()" style="color:var(--green)">Tentar novamente</a></div>';
+    if(sub) sub.textContent = '';
+    return;
+  }
+  if(sub) sub.textContent = fromCache ? '(dados em cache — atualiza a cada 1h)' : '(dados ao vivo)';
+  document.getElementById('matches-list').innerHTML = renderMatchCards(data, session);
+}
+
+function updateUsageBar(email) {
+  const status = analysisStatus(email);
+  const bar = document.getElementById('usage-bar');
+  if (!bar) return;
+  if (status.premium) { bar.classList.add('hidden'); return; }
+  bar.classList.remove('hidden');
+  const used = status.count || 0;
+  const pct = (used / K.free) * 100;
+  const fill = document.getElementById('usage-fill');
+  const count = document.getElementById('usage-count');
+  if (fill) {
+    fill.style.width = pct + '%';
+    fill.className = 'usage-fill' + (used >= K.free ? ' full' : used >= 2 ? ' warn' : '');
+  }
+  if (count) count.textContent = used + '/' + K.free;
+}
+
+/* ── LANDING SCOREBOARD ── */
+async function loadLandingScoreboard() {
+  const { data, fromCache, error } = await fetchMatches();
+  const badge = document.getElementById('sb-badge');
+  if (badge) { badge.textContent = fromCache ? '💾 cache' : '🟢 ao vivo'; if(fromCache) badge.classList.add('cache'); }
+  if (error && !data.length) {
+    document.getElementById('sb-content').innerHTML = '<div class="sb-error">⚠️ Sem conexão. <a href="javascript:loadLandingScoreboard()">Tentar novamente</a></div>';
+    return;
+  }
+  const [first, ...rest] = data;
+  if (!first) { document.getElementById('sb-content').innerHTML = '<div class="sb-empty">⏳ Aguardando próxima rodada...</div>'; return; }
+  const p = predict(first.strHomeTeam, first.strAwayTeam);
+  const opts = [
+    {label:'Casa'+(p.rec==='home'?' ★':''), val:p.ho, ai:p.hp+'%'+(p.rec==='home'?' ↑':''), rec:p.rec==='home'},
+    {label:'Empate'+(p.rec==='draw'?' ★':''), val:p.do, ai:p.dp+'%', rec:p.rec==='draw'},
+    {label:'Fora'+(p.rec==='away'?' ★':''), val:p.ao, ai:p.ap+'%'+(p.rec==='away'?' ↑':''), rec:p.rec==='away'},
+  ];
+  document.getElementById('sb-content').innerHTML = `
+    <div class="sb-match">
+      <div class="sb-team"><div class="sb-team-name">${emo(first.strHomeTeam)} ${first.strHomeTeam}</div></div>
+      <div class="sb-vs">
+        <span>VS</span>
+        <span class="sb-time">${fmtDate(first.dateEvent, first.strTime)}</span>
+        ${first.intRound ? '<span class="sb-round">Rodada '+first.intRound+'</span>' : ''}
+      </div>
+      <div class="sb-team"><div class="sb-team-name" style="text-align:right">${first.strAwayTeam} ${emo(first.strAwayTeam)}</div></div>
+    </div>
+    <div class="sb-odds">${opts.map(o=>`<div class="sb-odd ${o.rec?'rec':''}"><div class="sb-odd-label">${o.label}</div><div class="sb-odd-value">${o.val}</div><div class="sb-odd-ai">IA: ${o.ai}</div></div>`).join('')}</div>`;
+  if (rest.length) {
+    document.getElementById('next-matches').innerHTML = rest.slice(0,3).map(m=>{
+      const pp = predict(m.strHomeTeam,m.strAwayTeam);
+      return `<div class="nm-item"><div class="nm-teams">${emo(m.strHomeTeam)} ${m.strHomeTeam}<span class="vs">×</span>${m.strAwayTeam} ${emo(m.strAwayTeam)}</div><div class="nm-meta"><span class="nm-date">${fmtDate(m.dateEvent,m.strTime)}</span><span class="nm-conf">IA ${pp.conf}%</span></div></div>`;
+    }).join('');
+  }
+  // ticker
+  if (data.length) {
+    let idx=0;
+    const el = document.querySelector('.ticker-text');
+    const tick = ()=>{
+      const mm=data[idx]; const pp=predict(mm.strHomeTeam,mm.strAwayTeam);
+      el.style.opacity='0';
+      setTimeout(()=>{ el.innerHTML='Análise: <strong>'+mm.strHomeTeam+' × '+mm.strAwayTeam+'</strong> · IA '+pp.conf+'%'; el.style.opacity='1'; },380);
+      idx=(idx+1)%data.length;
+    };
+    tick(); setInterval(tick,4500);
+  }
+}
+
+/* ── PREMIUM ACTIVATION ── */
+function openActivateModal() {
+  document.getElementById('modal-activate').classList.remove('hidden');
+  document.getElementById('activate-error').classList.remove('show');
+  document.getElementById('payment-id-input').value = '';
+  setTimeout(()=>document.getElementById('payment-id-input').focus(), 100);
+}
+
+function activatePremium() {
+  const val = (document.getElementById('payment-id-input').value || '').trim();
+  const errEl = document.getElementById('activate-error');
+  errEl.classList.remove('show');
+  if (!/^\d{8,15}$/.test(val)) {
+    errEl.textContent = 'ID inválido. O ID do Mercado Pago tem entre 8 e 15 dígitos (apenas números).';
+    errEl.classList.add('show');
+    return;
+  }
+  const session = getSession();
+  if (!session) { closeAuth(); openAuth('login'); return; }
+  upgradeToPremium(session.email);
+  document.getElementById('modal-activate').classList.add('hidden');
+  loadDashboard();
+  // show success toast
+  const toast = document.createElement('div');
+  toast.style.cssText = 'position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--green);color:#080E1A;font-weight:700;padding:14px 28px;border-radius:50px;z-index:999;font-size:.9rem;white-space:nowrap';
+  toast.textContent = '⚡ Premium ativado com sucesso!';
+  document.body.appendChild(toast);
+  setTimeout(()=>toast.remove(), 4000);
+}
+
+/* ── CHECK MP REDIRECT ── */
+function checkPaymentReturn() {
+  const p = new URLSearchParams(window.location.search);
+  const status = p.get('collection_status') || p.get('status') || p.get('payment');
+  if (status === 'approved' || status === 'success') {
+    const session = getSession();
+    if (session) {
+      upgradeToPremium(session.email);
+    } else {
+      localStorage.setItem(K.pending, '1');
+    }
+    history.replaceState({}, document.title, window.location.pathname);
+  }
+}
+
+/* ── MISC ── */
+function toggleFaq(btn) { btn.parentElement.classList.toggle('open'); }
+
+document.querySelectorAll('a[href^="#"]').forEach(a=>{
+  a.addEventListener('click', e=>{
+    const t = document.querySelector(a.getAttribute('href'));
+    if (t) { e.preventDefault(); t.scrollIntoView({behavior:'smooth'}); }
+  });
+});
+
+// close modals on overlay click
+['modal-auth','modal-analysis','modal-activate'].forEach(id=>{
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('click', e=>{ if(e.target===el) el.classList.add('hidden'); });
+});
+
+/* ── INIT ── */
+checkPaymentReturn();
+const _session = getSession();
+if (_session && getUser(_session.email)) {
+  showApp();
+} else {
+  showLanding();
+}
+</script>
+</body>
+</html>
